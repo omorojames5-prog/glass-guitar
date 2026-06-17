@@ -1,39 +1,66 @@
-﻿package database
+﻿package repositories
 
 import (
-	"fmt"
-	"log"
-	"os"
+	"errors"
 
-	"gorm.io/driver/postgres"
+	"github.com/omorojames5-prog/glass-guitar/internal/models"
+	"github.com/omorojames5-prog/glass-guitar/pkg/database"
+
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 )
 
-var DB *gorm.DB
+type UserRepository struct {
+	db *gorm.DB
+}
 
-func ConnectDB() {
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
-		os.Getenv("DB_HOST"),
-		os.Getenv("DB_USER"),
-		os.Getenv("DB_PASSWORD"),
-		os.Getenv("DB_NAME"),
-		os.Getenv("DB_PORT"),
-	)
+func NewUserRepository() *UserRepository {
+	return &UserRepository{
+		db: database.GetDB(),
+	}
+}
 
-	var err error
-	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
-	})
+func (r *UserRepository) Create(user *models.User) error {
+	return r.db.Create(user).Error
+}
 
-	if err != nil {
-		log.Fatal("Failed to connect to database:", err)
+func (r *UserRepository) FindByEmail(email string) (*models.User, error) {
+	var user models.User
+	err := r.db.Where("email = ?", email).First(&user).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	return &user, err
+}
+
+func (r *UserRepository) FindByID(id uint) (*models.User, error) {
+	var user models.User
+	err := r.db.First(&user, id).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	return &user, err
+}
+
+func (r *UserRepository) Update(user *models.User) error {
+	return r.db.Save(user).Error
+}
+
+func (r *UserRepository) Delete(id uint) error {
+	return r.db.Delete(&models.User{}, id).Error
+}
+
+func (r *UserRepository) FindAll(page, limit int) ([]models.User, int64, error) {
+	var users []models.User
+	var total int64
+
+	offset := (page - 1) * limit
+
+	// Get total count
+	if err := r.db.Model(&models.User{}).Count(&total).Error; err != nil {
+		return nil, 0, err
 	}
 
-	log.Println("Database connected successfully")
+	// Get paginated results
+	err := r.db.Offset(offset).Limit(limit).Find(&users).Error
+	return users, total, err
 }
-
-func GetDB() *gorm.DB {
-	return DB
-}
-

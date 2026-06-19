@@ -1,0 +1,135 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test</title>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        button { margin: 5px; padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        #result { margin-top: 20px; padding: 15px; border: 1px solid #ddd; background: #f9f9f9; border-radius: 4px; white-space: pre-wrap; font-family: monospace; }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Glass Guitar API Test</h1>
+        <p>Make sure your Go server is running on port 8080</p>
+        <div>
+            <button onclick="register()">Register New User</button>
+            <button onclick="login()">Login</button>
+            <button onclick="getUsers()">Get Users (Protected)</button>
+            <button onclick="clearResult()">Clear</button>
+        </div>
+        <div id="result">Click a button to test the API...</div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8080/api';
+        let token = '';
+        let lastEmail = '';
+
+        async function register() {
+            const timestamp = Date.now();
+            const email = `test${timestamp}@example.com`;
+            const password = 'password123';
+            lastEmail = email;
+
+            document.getElementById('result').innerHTML = '⏳ Registering...';
+            
+            try {
+                const response = await fetch(`${API_URL}/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: `Test User ${timestamp}`,
+                        email: email,
+                        password: password
+                    })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    document.getElementById('result').innerHTML = `
+✅ Registration Successful!
+Email: ${email}
+Password: ${password}
+Response: ${JSON.stringify(data, null, 2)}
+                    `;
+                } else {
+                    document.getElementById('result').innerHTML = `
+❌ Registration Failed (${response.status})
+${JSON.stringify(data, null, 2)}
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('result').innerHTML = `❌ Error: ${error.message}`;
+            }
+        }
+
+        async function login() {
+            if (!lastEmail) {
+                alert('Please register first!');
+                return;
+            }
+
+            document.getElementById('result').innerHTML = '⏳ Logging in...';
+            
+            try {
+                const response = await fetch(`${API_URL}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: lastEmail,
+                        password: 'password123'
+                    })
+                });
+                const data = await response.json();
+                if (response.ok && data.token) {
+                    token = data.token;
+                    document.getElementById('result').innerHTML = `
+✅ Login Successful!
+Token: ${data.token.substring(0, 50)}...
+User: ${JSON.stringify(data.user, null, 2)}
+                    `;
+                } else {
+                    document.getElementById('result').innerHTML = `
+❌ Login Failed (${response.status})
+${JSON.stringify(data, null, 2)}
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('result').innerHTML = `❌ Error: ${error.message}`;
+            }
+        }
+
+        async function getUsers() {
+            if (!token) {
+                alert('Please login first!');
+                return;
+            }
+
+            document.getElementById('result').innerHTML = '⏳ Fetching users...';
+            
+            try {
+                const response = await fetch(`${API_URL}/users`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                document.getElementById('result').innerHTML = `
+${response.ok ? '✅' : '❌'} Get Users (${response.status})
+${JSON.stringify(data, null, 2)}
+                `;
+            } catch (error) {
+                document.getElementById('result').innerHTML = `❌ Error: ${error.message}`;
+            }
+        }
+
+        function clearResult() {
+            document.getElementById('result').innerHTML = 'Ready...';
+            lastEmail = '';
+            token = '';
+        }
+    </script>
+</body>
+</html>

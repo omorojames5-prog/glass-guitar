@@ -1,41 +1,19 @@
-﻿package database
+﻿package models
 
 import (
-	"fmt"
-	"log"
-	"os"
-
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
+"time"
+"gorm.io/gorm"
 )
 
-var DB *gorm.DB
-
-func ConnectDB() {
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
-		os.Getenv("DB_HOST"),
-		os.Getenv("DB_USER"),
-		os.Getenv("DB_PASSWORD"),
-		os.Getenv("DB_NAME"),
-		os.Getenv("DB_PORT"),
-	)
-
-	var err error
-	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
-	})
-
-	if err != nil {
-		log.Fatal("Failed to connect to database:", err)
-	}
-
-	log.Println("Database connected successfully")
+type User struct {
+ID        uint           `gorm:"primaryKey" json:"id"`
+Name      string         `gorm:"not null" json:"name"`
+Email     string         `gorm:"uniqueIndex;not null" json:"email"`
+Password  string         `gorm:"not null" json:"password"`
+Bio       string         `gorm:"type:text" json:"bio,omitempty"`
+Avatar    string         `gorm:"size:255" json:"avatar,omitempty"`
+IsActive  bool           `gorm:"default:true" json:"is_active"`
+CreatedAt time.Time      `json:"created_at"`
+UpdatedAt time.Time      `json:"updated_at"`
+DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 }
-
-func GetDB() *gorm.DB {
-	return DB
-}
-
-
-
